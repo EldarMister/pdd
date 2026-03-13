@@ -352,19 +352,20 @@ const runParser = async ({
 
   try {
     const keywordList = keywords.split(',').map(k => k.trim()).filter(Boolean);
+    const reachedTarget = () => stats.added >= maxProducts;
 
     outer:
     for (const keyword of keywordList) {
       let page = 1;
       while (true) {
-        if (stats.added + stats.updated >= maxProducts) break outer;
+        if (reachedTarget()) break outer;
 
         logger.info(`TaoBao: "${keyword}" стр.${page}`);
         const searchItems = await searchTaoBao(keyword, page);
         if (searchItems.length === 0) break;
 
         for (const item of searchItems) {
-          if (stats.added + stats.updated >= maxProducts) break outer;
+          if (reachedTarget()) break outer;
 
           try {
             const ex = await query('SELECT id, last_parsed_at FROM products WHERE external_id = $1', [item.itemId]);
