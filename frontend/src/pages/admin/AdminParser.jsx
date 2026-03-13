@@ -91,7 +91,7 @@ export default function AdminParser() {
     setRunning(statusRes.data.running)
 
     const s = settingsRes.data
-    setKeywords(s.parser_keywords || '')
+    setKeywords('all')
     setMaxProducts(s.parser_max_products || '100')
     setDelayMin(s.parser_delay_min || '8000')
     setDelayMax(s.parser_delay_max || '20000')
@@ -99,7 +99,7 @@ export default function AdminParser() {
 
     setSchedEnabled(s.parser_schedule_enabled !== 'false')
     setSchedCron(s.parser_schedule_cron || '0 */8 * * *')
-    setSchedKeywords(s.parser_keywords || '')
+    setSchedKeywords('all')
     setSchedMax(s.parser_max_products || '100')
     setSchedDelayMin(s.parser_delay_min || '8000')
     setSchedDelayMax(s.parser_delay_max || '20000')
@@ -132,7 +132,7 @@ export default function AdminParser() {
   const handleRunNow = async () => {
     try {
       await adminRunParser({
-        keywords,
+        keywords: keywords || 'all',
         max_products: parseInt(maxProducts),
         delay_min: parseInt(delayMin),
         delay_max: parseInt(delayMax),
@@ -151,7 +151,7 @@ export default function AdminParser() {
       await adminUpdateSettings({
         parser_schedule_enabled: schedEnabled ? 'true' : 'false',
         parser_schedule_cron:    schedCron,
-        parser_keywords:         schedKeywords,
+        parser_keywords:         (schedKeywords || 'all'),
         parser_max_products:     schedMax,
         parser_delay_min:        String(schedDelayMin),
         parser_delay_max:        String(schedDelayMax),
@@ -236,16 +236,8 @@ export default function AdminParser() {
         <h2 className="font-semibold text-gray-800 mb-4">▶️ Запустить вручную</h2>
 
         <div className="space-y-4">
-          {/* Keywords */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Ключевые слова
-              <span className="text-gray-400 font-normal ml-1">(через запятую)</span>
-            </label>
-            <textarea value={keywords} onChange={e => setKeywords(e.target.value)}
-              rows={2} className="input text-sm resize-none"
-              placeholder="электроника, одежда, аксессуары, 手机, 耳机" />
-            <p className="text-xs text-gray-400 mt-1">Совет: китайские слова дают лучшие результаты: 手机 (телефон), 耳机 (наушники), 女装 (женская одежда)</p>
+          <div className="text-xs text-slate-400">
+            Режим: все категории автоматически
           </div>
 
           {/* Max products */}
@@ -337,6 +329,7 @@ export default function AdminParser() {
         </div>
 
         <div className={`space-y-4 ${!schedEnabled ? 'opacity-40 pointer-events-none' : ''}`}>
+          <div className="text-xs text-slate-400">Категории: автоматически</div>
           {/* Schedule presets */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Интервал запуска</label>
@@ -359,14 +352,6 @@ export default function AdminParser() {
                 className="input text-xs w-44 font-mono py-1.5" placeholder="0 */8 * * *" />
               <span className="text-xs text-gray-400">{describeCron(schedCron)}</span>
             </div>
-          </div>
-
-          {/* Schedule keywords */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Ключевые слова</label>
-            <textarea value={schedKeywords} onChange={e => setSchedKeywords(e.target.value)}
-              rows={2} className="input text-sm resize-none"
-              placeholder="электроника, одежда, аксессуары" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
