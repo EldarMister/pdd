@@ -1,12 +1,12 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { useStore } from '../../store'
+import { NavLink, Outlet, useNavigate } from "react-router-dom"
+import { useStore } from "../../store"
 
 const navItems = [
-  { to: '/admin', label: '📊 Дэшборд', end: true },
-  { to: '/admin/products', label: '📦 Товары' },
-  { to: '/admin/categories', label: '🗂 Категории' },
-  { to: '/admin/parser', label: '🤖 Парсер' },
-  { to: '/admin/settings', label: '⚙️ Настройки' },
+  { to: "/admin", label: "???????", end: true },
+  { to: "/admin/products", label: "??????" },
+  { to: "/admin/categories", label: "?????????" },
+  { to: "/admin/parser", label: "??????" },
+  { to: "/admin/settings", label: "?????????" },
 ]
 
 export default function AdminLayout() {
@@ -15,34 +15,38 @@ export default function AdminLayout() {
 
   const handleLogout = () => {
     logout()
-    navigate('/admin/login')
+    navigate("/admin/login")
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="admin-theme min-h-screen flex relative">
+      <div className="pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
+
       {/* Sidebar */}
-      <aside className="w-56 bg-gray-900 text-white flex flex-col shrink-0 sticky top-0 h-screen">
-        <div className="p-4 border-b border-gray-800">
+      <aside className="w-64 bg-slate-950/70 text-white flex flex-col shrink-0 sticky top-0 h-screen border-r border-white/10 backdrop-blur">
+        <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-brand-500 rounded-xl flex items-center justify-center">
+            <div className="w-9 h-9 bg-gradient-to-br from-brand-400 to-brand-600 rounded-xl flex items-center justify-center shadow-md">
               <span className="font-bold text-sm">P</span>
             </div>
             <div>
               <p className="font-semibold text-sm">PDD Shop</p>
-              <p className="text-gray-400 text-xs">Админ-панель</p>
+              <p className="text-slate-400 text-xs">?????-??????</p>
             </div>
           </div>
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
-          {navItems.map(item => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
                 `flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  isActive ? 'bg-brand-500 text-white' : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  isActive
+                    ? "bg-white/10 text-white border border-white/10"
+                    : "text-slate-300 hover:bg-white/5 hover:text-white"
                 }`
               }
             >
@@ -51,15 +55,20 @@ export default function AdminLayout() {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-gray-800">
-          <div className="px-3 py-2 text-xs text-gray-400 mb-2">{adminUser?.login || 'admin'}</div>
-          <button onClick={handleLogout}
-            className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-colors">
-            🚪 Выйти
+        <div className="p-3 border-t border-white/10">
+          <div className="px-3 py-2 text-xs text-slate-400 mb-2">{adminUser?.login || "admin"}</div>
+          <button
+            onClick={handleLogout}
+            className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
+          >
+            ?????
           </button>
-          <a href="/" target="_blank"
-            className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-colors flex items-center gap-1 mt-1">
-            🌐 Перейти на сайт
+          <a
+            href="/"
+            target="_blank"
+            className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors flex items-center gap-1 mt-1"
+          >
+            ??????? ?? ????
           </a>
         </div>
       </aside>

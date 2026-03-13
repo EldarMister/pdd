@@ -245,16 +245,6 @@ export default function AdminSettings() {
             placeholder="-1001234567890" />
         </Field>
 
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-700">
-          <p className="font-semibold mb-1">Как настроить:</p>
-          <ol className="list-decimal list-inside space-y-1">
-            <li>Создайте бота у @BotFather → получите токен</li>
-            <li>Напишите боту любое сообщение (например /start)</li>
-            <li>Откройте: api.telegram.org/bot<b>ВАШ_ТОКЕН</b>/getUpdates</li>
-            <li>Найдите поле "chat": "id" — это ваш Chat ID</li>
-          </ol>
-        </div>
-
         <button onClick={() => handleSave(['telegram_bot_token', 'telegram_chat_id'])} disabled={saving}
           className="btn-primary text-sm py-2">Сохранить Telegram</button>
       </Section>
