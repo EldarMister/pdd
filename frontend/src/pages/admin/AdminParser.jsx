@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+﻿import { useEffect, useRef, useState } from "react"
 import {
   adminRunParser,
   adminParserStatus,
@@ -14,23 +14,23 @@ const calcSpeed = (delayMin, delayMax) => {
 }
 
 const SPEED_PRESETS = [
-  { label: "????????", delayMin: 25000, delayMax: 40000, desc: "~90?140/???" },
-  { label: "????????", delayMin: 12000, delayMax: 22000, desc: "~160?300/???" },
-  { label: "?????????", delayMin: 8000, delayMax: 15000, desc: "~240?450/???" },
-  { label: "??????", delayMin: 5000, delayMax: 10000, desc: "~360?720/???" },
+  { label: "Медленно", delayMin: 25000, delayMax: 40000, desc: "~90–140/час" },
+  { label: "Умеренно", delayMin: 12000, delayMax: 22000, desc: "~160–300/час" },
+  { label: "Нормально", delayMin: 8000, delayMax: 15000, desc: "~240–450/час" },
+  { label: "Быстро", delayMin: 5000, delayMax: 10000, desc: "~360–720/час" },
 ]
 
 const SCHEDULE_PRESETS = [
-  { label: "?????? 2 ????", cron: "0 */2 * * *" },
-  { label: "?????? 4 ????", cron: "0 */4 * * *" },
-  { label: "?????? 6 ?????", cron: "0 */6 * * *" },
-  { label: "?????? 8 ?????", cron: "0 */8 * * *" },
-  { label: "?????? 12 ?????", cron: "0 */12 * * *" },
-  { label: "??? ? ?????", cron: "0 2 * * *" },
+  { label: "Каждые 2 часа", cron: "0 */2 * * *" },
+  { label: "Каждые 4 часа", cron: "0 */4 * * *" },
+  { label: "Каждые 6 часов", cron: "0 */6 * * *" },
+  { label: "Каждые 8 часов", cron: "0 */8 * * *" },
+  { label: "Каждые 12 часов", cron: "0 */12 * * *" },
+  { label: "Раз в сутки", cron: "0 2 * * *" },
 ]
 
 const formatDate = (d) => {
-  if (!d) return "?"
+  if (!d) return "—"
   return new Date(d).toLocaleString("ru-RU")
 }
 
@@ -116,18 +116,18 @@ export default function AdminParser() {
         fetch_details: fetchDetails,
       })
       setRunning(true)
-      showMsg(`?????? ???????. ~${calcSpeed(delayMin, delayMax)} ???????/???`)
+      showMsg(`Парсер запущен. ~${calcSpeed(delayMin, delayMax)} товаров/час`)
     } catch (err) {
-      showMsg(err.response?.data?.error || "?????? ???????", "error")
+      showMsg(err.response?.data?.error || "Ошибка запуска", "error")
     }
   }
 
   const handleStop = async () => {
     try {
       await adminStopParser()
-      showMsg("????????? ?????????")
+      showMsg("Остановка запрошена")
     } catch (err) {
-      showMsg(err.response?.data?.error || "?????? ?????????", "error")
+      showMsg(err.response?.data?.error || "Ошибка остановки", "error")
     }
   }
 
@@ -143,9 +143,9 @@ export default function AdminParser() {
         parser_delay_max: String(schedDelayMax),
         parser_fetch_details: schedDetails ? "true" : "false",
       })
-      showMsg("?????????? ?????????")
+      showMsg("Расписание сохранено")
     } catch {
-      showMsg("?????? ?????????? ??????????", "error")
+      showMsg("Ошибка сохранения расписания", "error")
     } finally {
       setSavingSchedule(false)
     }
@@ -165,18 +165,18 @@ export default function AdminParser() {
   const added = last?.products_added || 0
   const updated = last?.products_updated || 0
   const skipped = last?.products_skipped || 0
-  const statusLabel = running ? "????????" : "??????????"
+  const statusLabel = running ? "Работает" : "Остановлен"
 
   return (
     <div className="p-6 space-y-6 max-w-6xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-display font-bold text-2xl text-slate-100">?????? TaoBao</h1>
-          <p className="text-slate-400 text-sm">?????????????? ?????? ??????? ?? Taobao ?? ???? ??????????</p>
+          <h1 className="font-display font-bold text-2xl text-slate-100">Парсер TaoBao</h1>
+          <p className="text-slate-400 text-sm">Автоматический импорт товаров из Taobao по всем категориям</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={load} className="btn-outline text-sm px-4 py-2">????????</button>
-          <button onClick={handleSaveSchedule} className="btn-outline text-sm px-4 py-2">?????????</button>
+          <button onClick={load} className="btn-outline text-sm px-4 py-2">Обновить</button>
+          <button onClick={handleSaveSchedule} className="btn-outline text-sm px-4 py-2">Настройки</button>
         </div>
       </div>
 
@@ -190,53 +190,51 @@ export default function AdminParser() {
         </div>
       )}
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="admin-panel rounded-2xl p-4">
-          <div className="text-sm text-slate-400 mb-2">??????</div>
+          <div className="text-sm text-slate-400 mb-2">Статус</div>
           <div className="flex items-center gap-2">
             <span className={`w-2.5 h-2.5 rounded-full ${running ? "bg-emerald-400" : "bg-slate-500"}`} />
             <span className="text-slate-100 font-semibold">{statusLabel}</span>
           </div>
-          <div className="text-xs text-slate-400 mt-3">????????? ??????: {formatDate(last?.created_at)}</div>
+          <div className="text-xs text-slate-400 mt-3">Последний запуск: {formatDate(last?.created_at)}</div>
         </div>
         <div className="admin-panel rounded-2xl p-4">
-          <div className="text-sm text-slate-400 mb-2">?????????</div>
+          <div className="text-sm text-slate-400 mb-2">Добавлено</div>
           <div className="text-2xl font-bold text-emerald-300">{added}</div>
-          <div className="text-xs text-slate-500 mt-2">?? ????????? ??????</div>
+          <div className="text-xs text-slate-500 mt-2">за последний запуск</div>
         </div>
         <div className="admin-panel rounded-2xl p-4">
-          <div className="text-sm text-slate-400 mb-2">?????????</div>
+          <div className="text-sm text-slate-400 mb-2">Обновлено</div>
           <div className="text-2xl font-bold text-sky-300">{updated}</div>
-          <div className="text-xs text-slate-500 mt-2">?? ????????? ??????</div>
+          <div className="text-xs text-slate-500 mt-2">за последний запуск</div>
         </div>
         <div className="admin-panel rounded-2xl p-4">
-          <div className="text-sm text-slate-400 mb-2">?????????</div>
+          <div className="text-sm text-slate-400 mb-2">Пропущено</div>
           <div className="text-2xl font-bold text-amber-300">{skipped}</div>
-          <div className="text-xs text-slate-500 mt-2">?? ????????? ??????</div>
+          <div className="text-xs text-slate-500 mt-2">за последний запуск</div>
         </div>
       </div>
 
-      {/* Run panel */}
       <div className="admin-panel rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="font-semibold text-slate-100">??????</h2>
-            <p className="text-xs text-slate-400">?????: ??? ????????? ?????????????</p>
+            <h2 className="font-semibold text-slate-100">Запуск</h2>
+            <p className="text-xs text-slate-400">Режим: все категории автоматически</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleRunNow} disabled={running} className="btn-primary flex items-center gap-2">
-              {running ? <><span className="animate-spin inline-block">?</span> ????????...</> : "?????????"}
+              {running ? <><span className="animate-spin inline-block">⚙</span> Работает...</> : "Запустить"}
             </button>
             {running && (
-              <button onClick={handleStop} className="btn-outline text-sm px-4 py-2">??????????</button>
+              <button onClick={handleStop} className="btn-outline text-sm px-4 py-2">Остановить</button>
             )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">???????? ???????</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Максимум товаров</label>
             <input
               type="number"
               value={maxProducts}
@@ -253,13 +251,13 @@ export default function AdminParser() {
                 onChange={(e) => setFetchDetails(e.target.checked)}
                 className="w-4 h-4 accent-brand-500"
               />
-              <span className="text-sm text-slate-300">????????? ???????? ??????</span>
+              <span className="text-sm text-slate-300">Загружать страницу товара</span>
             </label>
           </div>
         </div>
 
         <div className="mt-4">
-          <div className="text-sm text-slate-300 mb-2">????????: ~{calcSpeed(delayMin, delayMax)} ???????/???</div>
+          <div className="text-sm text-slate-300 mb-2">Скорость: ~{calcSpeed(delayMin, delayMax)} товаров/час</div>
           <div className="flex flex-wrap gap-2 mb-3">
             {SPEED_PRESETS.map((p) => (
               <button
@@ -277,21 +275,20 @@ export default function AdminParser() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">???. ???????? (??)</label>
+              <label className="block text-xs text-slate-400 mb-1">Мин. задержка (мс)</label>
               <input type="number" value={delayMin} onChange={(e) => setDelayMin(e.target.value)} className="input text-sm" />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">????. ???????? (??)</label>
+              <label className="block text-xs text-slate-400 mb-1">Макс. задержка (мс)</label>
               <input type="number" value={delayMax} onChange={(e) => setDelayMax(e.target.value)} className="input text-sm" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Schedule */}
       <div className="admin-panel rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-slate-100">??????????</h2>
+          <h2 className="font-semibold text-slate-100">Расписание</h2>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -299,12 +296,12 @@ export default function AdminParser() {
               onChange={(e) => setSchedEnabled(e.target.checked)}
               className="w-4 h-4 accent-brand-500"
             />
-            <span className="text-sm font-medium text-slate-300">????????</span>
+            <span className="text-sm font-medium text-slate-300">Включено</span>
           </label>
         </div>
 
         <div className={`space-y-4 ${!schedEnabled ? "opacity-40 pointer-events-none" : ""}`}>
-          <div className="text-xs text-slate-400">?????????: ?????????????</div>
+          <div className="text-xs text-slate-400">Категории: автоматически</div>
           <div className="flex flex-wrap gap-2">
             {SCHEDULE_PRESETS.map((p) => (
               <button
@@ -322,7 +319,7 @@ export default function AdminParser() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">????. ???????</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Макс. товаров</label>
               <input type="number" value={schedMax} onChange={(e) => setSchedMax(e.target.value)} className="input text-sm" />
             </div>
             <div className="flex items-end">
@@ -333,36 +330,35 @@ export default function AdminParser() {
                   onChange={(e) => setSchedDetails(e.target.checked)}
                   className="w-4 h-4 accent-brand-500"
                 />
-                <span className="text-sm text-slate-300">????????? ?????? ??????</span>
+                <span className="text-sm text-slate-300">Загружать детали товара</span>
               </label>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">???. ???????? (??)</label>
+              <label className="block text-xs text-slate-400 mb-1">Мин. задержка (мс)</label>
               <input type="number" value={schedDelayMin} onChange={(e) => setSchedDelayMin(e.target.value)} className="input text-sm" />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">????. ???????? (??)</label>
+              <label className="block text-xs text-slate-400 mb-1">Макс. задержка (мс)</label>
               <input type="number" value={schedDelayMax} onChange={(e) => setSchedDelayMax(e.target.value)} className="input text-sm" />
             </div>
           </div>
         </div>
 
         <button onClick={handleSaveSchedule} disabled={savingSchedule} className="btn-primary mt-4 text-sm py-2">
-          {savingSchedule ? "????????..." : "????????? ??????????"}
+          {savingSchedule ? "Сохраняю..." : "Сохранить расписание"}
         </button>
       </div>
 
-      {/* Logs */}
       <div className="admin-panel rounded-2xl p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold text-slate-100">???? ???????</h2>
-          <span className="text-xs text-slate-400">??????????? ?????? 5? ?? ????? ??????</span>
+          <h2 className="font-semibold text-slate-100">Логи парсера</h2>
+          <span className="text-xs text-slate-400">Обновляется каждые 5с во время работы</span>
         </div>
         <div className="bg-slate-950/60 rounded-xl border border-white/10 p-4 max-h-64 overflow-auto text-xs font-mono">
           {logs.length === 0 ? (
-            <div className="text-slate-500">????? ???? ???</div>
+            <div className="text-slate-500">Логов пока нет</div>
           ) : (
             logs.slice(0, 50).map((log) => (
               <div key={log.id} className="flex items-start gap-3 py-1">

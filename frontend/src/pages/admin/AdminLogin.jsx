@@ -1,4 +1,4 @@
-import { useState } from "react"
+﻿import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { adminLogin } from "../../api"
 import { useStore } from "../../store"
@@ -19,7 +19,7 @@ export default function AdminLoginPage() {
       setAdmin(res.data.token, res.data.admin)
       navigate("/admin")
     } catch (err) {
-      setError(err.response?.data?.error || "???????? ????? ??? ??????")
+      setError(err.response?.data?.error || "Неверный логин или пароль")
     } finally {
       setLoading(false)
     }
@@ -32,13 +32,13 @@ export default function AdminLoginPage() {
           <div className="w-14 h-14 bg-gradient-to-br from-brand-400 to-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
             <span className="text-white font-bold text-xl">P</span>
           </div>
-          <h1 className="font-display font-bold text-2xl">???? ? ???????</h1>
+          <h1 className="font-display font-bold text-2xl">Вход в админку</h1>
           <p className="text-slate-400 text-sm mt-1">PDD Shop</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">?????</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Логин</label>
             <input
               type="text"
               value={form.login}
@@ -50,13 +50,13 @@ export default function AdminLoginPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">??????</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Пароль</label>
             <input
               type="password"
               value={form.password}
               onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
               className="input"
-              placeholder="????????"
+              placeholder="••••••••"
               required
               autoComplete="current-password"
             />
@@ -69,7 +69,7 @@ export default function AdminLoginPage() {
           )}
 
           <button type="submit" disabled={loading} className="btn-primary w-full py-3">
-            {loading ? "????..." : "?????"}
+            {loading ? "Вход..." : "Войти"}
           </button>
         </form>
       </div>

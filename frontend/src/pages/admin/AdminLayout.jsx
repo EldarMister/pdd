@@ -1,12 +1,12 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom"
+﻿import { NavLink, Outlet, useNavigate } from "react-router-dom"
 import { useStore } from "../../store"
 
 const navItems = [
-  { to: "/admin", label: "???????", end: true },
-  { to: "/admin/products", label: "??????" },
-  { to: "/admin/categories", label: "?????????" },
-  { to: "/admin/parser", label: "??????" },
-  { to: "/admin/settings", label: "?????????" },
+  { to: "/admin", label: "Дэшборд", end: true },
+  { to: "/admin/products", label: "Товары" },
+  { to: "/admin/categories", label: "Категории" },
+  { to: "/admin/parser", label: "Парсер" },
+  { to: "/admin/settings", label: "Настройки" },
 ]
 
 export default function AdminLayout() {
@@ -22,7 +22,6 @@ export default function AdminLayout() {
     <div className="admin-theme min-h-screen flex relative">
       <div className="pointer-events-none absolute inset-0 opacity-60" aria-hidden="true" />
 
-      {/* Sidebar */}
       <aside className="w-64 bg-slate-950/70 text-white flex flex-col shrink-0 sticky top-0 h-screen border-r border-white/10 backdrop-blur">
         <div className="p-4 border-b border-white/10">
           <div className="flex items-center gap-2">
@@ -31,7 +30,7 @@ export default function AdminLayout() {
             </div>
             <div>
               <p className="font-semibold text-sm">PDD Shop</p>
-              <p className="text-slate-400 text-xs">?????-??????</p>
+              <p className="text-slate-400 text-xs">Админ-панель</p>
             </div>
           </div>
         </div>
@@ -61,19 +60,18 @@ export default function AdminLayout() {
             onClick={handleLogout}
             className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
           >
-            ?????
+            Выйти
           </button>
           <a
             href="/"
             target="_blank"
             className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors flex items-center gap-1 mt-1"
           >
-            ??????? ?? ????
+            Перейти на сайт
           </a>
         </div>
       </aside>
 
-      {/* Content */}
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
