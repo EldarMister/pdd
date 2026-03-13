@@ -37,6 +37,38 @@ const getHeaders = (referer = 'https://s.taobao.com/') => ({
 
 const axiosClient = axios.create({ timeout: 20000, maxRedirects: 5 });
 
+// Default categories + keywords (used when keywords = "all"/"auto" or default russian list)
+const DEFAULT_CATEGORIES = [
+  { slug: 'elektronika', name: 'Электроника', sort: 1, keywords: ['手机','耳机','电脑','平板','智能手表','相机','键盘','鼠标','充电器'] },
+  { slug: 'odezhda', name: 'Одежда', sort: 2, keywords: ['女装','男装','童装','外套','衬衫','裤子','T恤','连衣裙'] },
+  { slug: 'obuv', name: 'Обувь', sort: 3, keywords: ['鞋子','运动鞋','靴子','拖鞋','凉鞋'] },
+  { slug: 'aksessuary', name: 'Аксессуары', sort: 4, keywords: ['包包','手表','眼镜','皮带','帽子','首饰'] },
+  { slug: 'dom', name: 'Товары для дома', sort: 5, keywords: ['家居','厨房','家电','床上用品','收纳','灯具'] },
+  { slug: 'krasota', name: 'Красота и здоровье', sort: 6, keywords: ['美妆','护肤','彩妆','洗发','香水','口红'] },
+  { slug: 'sport', name: 'Спорт', sort: 7, keywords: ['运动','健身','瑜伽','跑步','自行车'] },
+  { slug: 'detskie', name: 'Детские товары', sort: 8, keywords: ['玩具','婴儿','儿童','童鞋','童装'] },
+];
+
+const shouldUseDefaultCategories = (keywords) => {
+  const k = (keywords || '').toLowerCase().replace(/\s+/g, '');
+  return !k || k === 'all' || k === 'auto' || k === 'электроника,одежда,аксессуары';
+};
+
+const ensureCategories = async () => {
+  const map = {};
+  for (const c of DEFAULT_CATEGORIES) {
+    const res = await query(
+      `INSERT INTO categories (name, slug, sort_order, is_active)
+       VALUES ($1,$2,$3,TRUE)
+       ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order
+       RETURNING id`,
+      [c.name, c.slug, c.sort]
+    );
+    map[c.slug] = res.rows[0]?.id;
+  }
+  return map;
+};
+
 // ─────────────────────────────────────────────────────────────
 //  TaoBao Search
 // ─────────────────────────────────────────────────────────────
@@ -277,8 +309,8 @@ const saveProduct = async (productData) => {
         external_id, source, original_url, original_title, translated_title,
         original_description, translated_description, current_price, old_price,
         currency, price_kgs, final_price, rating, reviews_count, seller_name,
-        stock_status, is_active, parse_failures_count, last_parsed_at, updated_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,TRUE,0,NOW(),NOW())
+        stock_status, is_active, parse_failures_count, last_parsed_at, updated_at, category_id
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,TRUE,0,NOW(),NOW(),$17)
       ON CONFLICT (external_id) DO UPDATE SET
         original_title       = EXCLUDED.original_title,
         translated_title     = CASE
@@ -293,7 +325,11 @@ const saveProduct = async (productData) => {
         stock_status         = EXCLUDED.stock_status,
         parse_failures_count = 0,
         last_parsed_at       = NOW(),
-        updated_at           = NOW()
+        updated_at           = NOW(),
+        category_id          = CASE
+          WHEN products.category_id IS NULL AND EXCLUDED.category_id IS NOT NULL THEN EXCLUDED.category_id
+          ELSE products.category_id
+        END
       RETURNING id, (xmax = 0) AS is_new
     `, [
       productData.external_id, 'taobao', productData.original_url,
@@ -302,6 +338,7 @@ const saveProduct = async (productData) => {
       productData.current_price, productData.old_price, 'CNY',
       priceCalc?.priceChina || null, priceCalc?.finalPrice || null,
       productData.rating, productData.reviews_count, productData.seller_name, productData.stock_status,
+      productData.category_id || null,
     ]);
 
     const { id, is_new } = result.rows[0];
@@ -341,76 +378,90 @@ const saveProduct = async (productData) => {
 // ─────────────────────────────────────────────────────────────
 
 const runParser = async ({
-  keywords     = 'электроника',
+  keywords     = '??????????????????????',
   maxProducts  = 100,
   delayMin     = 8000,
   delayMax     = 20000,
   fetchDetails = true,
 } = {}) => {
   const stats = { added: 0, updated: 0, skipped: 0, errors: 0 };
-  const logId = await createParserLog('manual', 'running', 'Парсер TaoBao запущен');
+  const logId = await createParserLog('manual', 'running', '???????????? TaoBao ??????????????');
 
   try {
     const keywordList = keywords.split(',').map(k => k.trim()).filter(Boolean);
     const reachedTarget = () => stats.added >= maxProducts;
+    const useDefaultCategories = shouldUseDefaultCategories(keywords);
+
+    const categoryRuns = useDefaultCategories
+      ? DEFAULT_CATEGORIES.map(c => ({ categoryId: null, slug: c.slug, keywords: c.keywords, name: c.name }))
+      : [{ categoryId: null, slug: null, keywords: keywordList }];
+
+    if (useDefaultCategories) {
+      const ids = await ensureCategories();
+      categoryRuns.forEach(c => { c.categoryId = ids[c.slug] || null; });
+    }
 
     outer:
-    for (const keyword of keywordList) {
-      let page = 1;
-      while (true) {
-        if (reachedTarget()) break outer;
-
-        logger.info(`TaoBao: "${keyword}" стр.${page}`);
-        const searchItems = await searchTaoBao(keyword, page);
-        if (searchItems.length === 0) break;
-
-        for (const item of searchItems) {
+    for (const run of categoryRuns) {
+      for (const keyword of run.keywords) {
+        let page = 1;
+        while (true) {
           if (reachedTarget()) break outer;
 
-          try {
-            const ex = await query('SELECT id, last_parsed_at FROM products WHERE external_id = $1', [item.itemId]);
-            if (ex.rows.length > 0) {
-              const h = ex.rows[0].last_parsed_at ? (Date.now() - new Date(ex.rows[0].last_parsed_at).getTime()) / 3600000 : 999;
-              if (h < 6) { stats.skipped++; continue; }
+          logger.info(`TaoBao: "${keyword}"${run.slug ? ` [${run.slug}]` : ''} ???.${page}`);
+          const searchItems = await searchTaoBao(keyword, page);
+          if (searchItems.length === 0) break;
+
+          for (const item of searchItems) {
+            if (reachedTarget()) break outer;
+
+            try {
+              const ex = await query('SELECT id, last_parsed_at FROM products WHERE external_id = $1', [item.itemId]);
+              if (ex.rows.length > 0) {
+                const h = ex.rows[0].last_parsed_at ? (Date.now() - new Date(ex.rows[0].last_parsed_at).getTime()) / 3600000 : 999;
+                if (h < 6) { stats.skipped++; continue; }
+              }
+
+              const waited = await randomDelay(delayMin, delayMax);
+              logger.debug(`??? ${waited}ms ??? item ${item.itemId}`);
+
+              let product = fetchDetails ? await getItemDetail(item.itemId) : null;
+              if (!product) {
+                product = {
+                  external_id: item.itemId,
+                  original_url: `https://item.taobao.com/item.htm?id=${item.itemId}`,
+                  original_title: item.title,
+                  translated_title: translateTitle(item.title),
+                  original_description: '', translated_description: '',
+                  current_price: item.price, old_price: null, currency: 'CNY',
+                  rating: 0, reviews_count: item.salesCount || 0,
+                  seller_name: item.shopName || '', stock_status: 'in_stock',
+                  images: item.pic ? [item.pic] : [], variants: [],
+                };
+              }
+
+              product.category_id = run.categoryId || product.category_id || null;
+
+              const { is_new } = await saveProduct(product);
+              if (is_new) { stats.added++; logger.info(`??? +${product.external_id} ${product.translated_title || product.original_title}`); }
+              else stats.updated++;
+
+            } catch (err) {
+              logger.error(`??? item ${item.itemId}`, { error: err.message });
+              stats.errors++;
+              await incrementFailures(item.itemId);
             }
-
-            const waited = await randomDelay(delayMin, delayMax);
-            logger.debug(`⏳ ${waited}ms → item ${item.itemId}`);
-
-            let product = fetchDetails ? await getItemDetail(item.itemId) : null;
-            if (!product) {
-              product = {
-                external_id: item.itemId,
-                original_url: `https://item.taobao.com/item.htm?id=${item.itemId}`,
-                original_title: item.title,
-                translated_title: translateTitle(item.title),
-                original_description: '', translated_description: '',
-                current_price: item.price, old_price: null, currency: 'CNY',
-                rating: 0, reviews_count: item.salesCount || 0,
-                seller_name: item.shopName || '', stock_status: 'in_stock',
-                images: item.pic ? [item.pic] : [], variants: [],
-              };
-            }
-
-            const { is_new } = await saveProduct(product);
-            if (is_new) { stats.added++; logger.info(`✓ +${product.external_id} ${product.translated_title || product.original_title}`); }
-            else stats.updated++;
-
-          } catch (err) {
-            logger.error(`✗ item ${item.itemId}`, { error: err.message });
-            stats.errors++;
-            await incrementFailures(item.itemId);
           }
-        }
 
-        page++;
-        await randomDelay(delayMin * 2, delayMax * 2);
+          page++;
+          await randomDelay(delayMin * 2, delayMax * 2);
+        }
       }
 
       await randomDelay(5000, 10000);
     }
 
-    await updateParserLog(logId, 'success', `+${stats.added} новых, ~${stats.updated} обновлено, ⏭${stats.skipped} пропущено`, stats);
+    await updateParserLog(logId, 'success', `+${stats.added} ??????????, ~${stats.updated} ??????????????????, ???${stats.skipped} ??????????????????`, stats);
     return stats;
 
   } catch (err) {
