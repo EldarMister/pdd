@@ -32,7 +32,7 @@ const query = async (text, params) => {
 
 const initDatabase = async () => {
   try {
-    const schemaPath = path.join(__dirname, 'schema.sql');
+    const schemaPath = path.join(__dirname, '..', 'db', 'schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
     await pool.query(schema);
     logger.info('Database initialized successfully');
