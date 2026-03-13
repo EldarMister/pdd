@@ -401,64 +401,80 @@ const runParser = async ({
       categoryRuns.forEach(c => { c.categoryId = ids[c.slug] || null; });
     }
 
-    outer:
-    for (const run of categoryRuns) {
-      for (const keyword of run.keywords) {
-        let page = 1;
-        while (true) {
-          if (reachedTarget()) break outer;
+    let cycle = 0;
 
-          logger.info(`TaoBao: "${keyword}"${run.slug ? ` [${run.slug}]` : ''} ???.${page}`);
-          const searchItems = await searchTaoBao(keyword, page);
-          if (searchItems.length === 0) break;
+    while (!reachedTarget()) {
+      let addedThisCycle = 0;
 
-          for (const item of searchItems) {
-            if (reachedTarget()) break outer;
+      for (const run of categoryRuns) {
+        for (const keyword of run.keywords) {
+          let page = 1;
+          while (true) {
+            if (reachedTarget()) break;
 
-            try {
-              const ex = await query('SELECT id, last_parsed_at FROM products WHERE external_id = $1', [item.itemId]);
-              if (ex.rows.length > 0) {
-                const h = ex.rows[0].last_parsed_at ? (Date.now() - new Date(ex.rows[0].last_parsed_at).getTime()) / 3600000 : 999;
-                if (h < 6) { stats.skipped++; continue; }
+            logger.info(`TaoBao: "${keyword}"${run.slug ? ` [${run.slug}]` : ''} ???.${page}`);
+            const searchItems = await searchTaoBao(keyword, page);
+            if (searchItems.length === 0) break;
+
+            for (const item of searchItems) {
+              if (reachedTarget()) break;
+
+              try {
+                const ex = await query('SELECT id, last_parsed_at FROM products WHERE external_id = $1', [item.itemId]);
+                if (ex.rows.length > 0) {
+                  const h = ex.rows[0].last_parsed_at ? (Date.now() - new Date(ex.rows[0].last_parsed_at).getTime()) / 3600000 : 999;
+                  if (h < 6) { stats.skipped++; continue; }
+                }
+
+                const waited = await randomDelay(delayMin, delayMax);
+                logger.debug(`??? ${waited}ms ??? item ${item.itemId}`);
+
+                let product = fetchDetails ? await getItemDetail(item.itemId) : null;
+                if (!product) {
+                  product = {
+                    external_id: item.itemId,
+                    original_url: `https://item.taobao.com/item.htm?id=${item.itemId}`,
+                    original_title: item.title,
+                    translated_title: translateTitle(item.title),
+                    original_description: '', translated_description: '',
+                    current_price: item.price, old_price: null, currency: 'CNY',
+                    rating: 0, reviews_count: item.salesCount || 0,
+                    seller_name: item.shopName || '', stock_status: 'in_stock',
+                    images: item.pic ? [item.pic] : [], variants: [],
+                  };
+                }
+
+                product.category_id = run.categoryId || product.category_id || null;
+
+                const { is_new } = await saveProduct(product);
+                if (is_new) {
+                  stats.added++;
+                  addedThisCycle++;
+                  logger.info(`??? +${product.external_id} ${product.translated_title || product.original_title}`);
+                } else {
+                  stats.updated++;
+                }
+
+              } catch (err) {
+                logger.error(`??? item ${item.itemId}`, { error: err.message });
+                stats.errors++;
+                await incrementFailures(item.itemId);
               }
-
-              const waited = await randomDelay(delayMin, delayMax);
-              logger.debug(`??? ${waited}ms ??? item ${item.itemId}`);
-
-              let product = fetchDetails ? await getItemDetail(item.itemId) : null;
-              if (!product) {
-                product = {
-                  external_id: item.itemId,
-                  original_url: `https://item.taobao.com/item.htm?id=${item.itemId}`,
-                  original_title: item.title,
-                  translated_title: translateTitle(item.title),
-                  original_description: '', translated_description: '',
-                  current_price: item.price, old_price: null, currency: 'CNY',
-                  rating: 0, reviews_count: item.salesCount || 0,
-                  seller_name: item.shopName || '', stock_status: 'in_stock',
-                  images: item.pic ? [item.pic] : [], variants: [],
-                };
-              }
-
-              product.category_id = run.categoryId || product.category_id || null;
-
-              const { is_new } = await saveProduct(product);
-              if (is_new) { stats.added++; logger.info(`??? +${product.external_id} ${product.translated_title || product.original_title}`); }
-              else stats.updated++;
-
-            } catch (err) {
-              logger.error(`??? item ${item.itemId}`, { error: err.message });
-              stats.errors++;
-              await incrementFailures(item.itemId);
             }
-          }
 
-          page++;
-          await randomDelay(delayMin * 2, delayMax * 2);
+            page++;
+            await randomDelay(delayMin * 2, delayMax * 2);
+          }
         }
+
+        await randomDelay(5000, 10000);
       }
 
-      await randomDelay(5000, 10000);
+      if (reachedTarget()) break;
+
+      cycle++;
+      logger.info(`Cycle ${cycle} complete. Added: ${addedThisCycle}. Waiting before next cycle...`);
+      await randomDelay(10 * 60 * 1000, 15 * 60 * 1000);
     }
 
     await updateParserLog(logId, 'success', `+${stats.added} ??????????, ~${stats.updated} ??????????????????, ???${stats.skipped} ??????????????????`, stats);
