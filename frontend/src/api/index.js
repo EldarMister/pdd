@@ -47,6 +47,7 @@ export const adminRunParser = (data) => api.post('/admin/parser/run', data)
 export const adminUpdateProduct2 = (id) => api.post(`/admin/parser/update-product/${id}`)
 export const adminParserStatus = () => api.get('/admin/parser/status')
 export const adminParserLogs = () => api.get('/admin/parser/logs')
+export const adminStopParser = () => api.post('/admin/parser/stop')
 export const adminUpdateCurrency = () => api.post('/admin/currency/update')
 
 export default api

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { adminRunParser, adminParserStatus, adminParserLogs, adminGetSettings, adminUpdateSettings } from '../../api'
+import { adminRunParser, adminParserStatus, adminParserLogs, adminGetSettings, adminUpdateSettings, adminStopParser } from '../../api'
 
 // ─── helpers ─────────────────────────────────────────────────
 
@@ -128,6 +128,15 @@ export default function AdminParser() {
   }
 
   // ─── Handlers ───────────────────────────────────────────
+
+  const handleStop = async () => {
+    try {
+      await adminStopParser()
+      showMsg('? ????????? ?????????')
+    } catch (err) {
+      showMsg(err.response?.data?.error || '?????? ?????????', 'error')
+    }
+  }
 
   const handleRunNow = async () => {
     try {

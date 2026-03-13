@@ -37,6 +37,10 @@ const getHeaders = (referer = 'https://s.taobao.com/') => ({
 
 const axiosClient = axios.create({ timeout: 20000, maxRedirects: 5 });
 
+let stopRequested = false;
+const requestParserStop = () => { stopRequested = true; };
+const shouldStop = () => stopRequested;
+
 // Default categories + keywords (used when keywords = "all"/"auto" or default russian list)
 const DEFAULT_CATEGORIES = [
   { slug: 'elektronika', name: 'Электроника', sort: 1, keywords: ['手机','耳机','电脑','平板','智能手表','相机','键盘','鼠标','充电器'] },
@@ -76,6 +80,7 @@ const ensureCategories = async () => {
 const searchTaoBao = async (keyword, page = 1) => {
   const results = [];
   try {
+    stopRequested = false;
     const url = `https://s.taobao.com/search?q=${encodeURIComponent(keyword)}&s=${(page - 1) * 44}&style=grid&ie=utf8`;
     const resp = await axiosClient.get(url, { headers: getHeaders('https://www.taobao.com/') });
     const $ = cheerio.load(resp.data);
@@ -87,6 +92,7 @@ const searchTaoBao = async (keyword, page = 1) => {
       const m1 = src.match(/g_page_config\s*=\s*(\{[\s\S]+?\});\s*(?:window|g_srp)/);
       if (m1) {
         try {
+    stopRequested = false;
           const cfg = JSON.parse(m1[1]);
           const items = cfg?.mods?.itemlist?.data?.auctions || cfg?.mods?.itemlist?.data?.items || [];
           items.forEach(item => { const p = normalizeSearchItem(item); if (p) results.push(p); });
@@ -98,6 +104,7 @@ const searchTaoBao = async (keyword, page = 1) => {
       const m2 = src.match(/window\.__INIT_DATA__\s*=\s*(\{[\s\S]+?\});\s*<\/script>/);
       if (m2) {
         try {
+    stopRequested = false;
           const data = JSON.parse(m2[1]);
           const items = data?.data?.itemsArray || data?.itemsArray || [];
           items.forEach(item => { const p = normalizeSearchItem(item); if (p) results.push(p); });
@@ -131,6 +138,7 @@ const searchTaoBao = async (keyword, page = 1) => {
 
 const getItemDetail = async (itemId) => {
   try {
+    stopRequested = false;
     const url = `https://item.taobao.com/item.htm?id=${itemId}`;
     const resp = await axiosClient.get(url, { headers: getHeaders('https://s.taobao.com/') });
     const $ = cheerio.load(resp.data);
@@ -149,6 +157,7 @@ const getItemDetail = async (itemId) => {
         const m = src.match(pattern);
         if (m) {
           try {
+    stopRequested = false;
             const parsed = JSON.parse(m[1]);
             const item = parsed?.item || parsed?.data?.item || parsed?.itemDO || parsed;
             if (item?.itemId || item?.item_id || item?.nid) {
@@ -302,6 +311,7 @@ const translateTitle = (title) => {
 
 const saveProduct = async (productData) => {
   try {
+    stopRequested = false;
     const priceCalc = productData.current_price ? await calculatePrice(productData.current_price) : null;
 
     const result = await query(`
@@ -388,6 +398,7 @@ const runParser = async ({
   const logId = await createParserLog('manual', 'running', '???????????? TaoBao ??????????????');
 
   try {
+    stopRequested = false;
     const keywordList = keywords.split(',').map(k => k.trim()).filter(Boolean);
     const reachedTarget = () => stats.added >= maxProducts;
     const useDefaultCategories = shouldUseDefaultCategories(keywords);
@@ -403,13 +414,21 @@ const runParser = async ({
 
     let cycle = 0;
 
+    const stopIfRequested = async () => {
+      if (!shouldStop()) return false;
+      await updateParserLog(logId, 'stopped', '?????? ?????????? ?????????????', stats);
+      return true;
+    };
+
     while (!reachedTarget()) {
+      if (await stopIfRequested()) return stats;
       let addedThisCycle = 0;
 
       for (const run of categoryRuns) {
         for (const keyword of run.keywords) {
           let page = 1;
           while (true) {
+          if (await stopIfRequested()) return stats;
             if (reachedTarget()) break;
 
             logger.info(`TaoBao: "${keyword}"${run.slug ? ` [${run.slug}]` : ''} ???.${page}`);
@@ -417,9 +436,11 @@ const runParser = async ({
             if (searchItems.length === 0) break;
 
             for (const item of searchItems) {
+            if (await stopIfRequested()) return stats;
               if (reachedTarget()) break;
 
               try {
+    stopRequested = false;
                 const ex = await query('SELECT id, last_parsed_at FROM products WHERE external_id = $1', [item.itemId]);
                 if (ex.rows.length > 0) {
                   const h = ex.rows[0].last_parsed_at ? (Date.now() - new Date(ex.rows[0].last_parsed_at).getTime()) / 3600000 : 999;
@@ -467,13 +488,15 @@ const runParser = async ({
           }
         }
 
-        await randomDelay(5000, 10000);
+        if (await stopIfRequested()) return stats;
+      await randomDelay(5000, 10000);
       }
 
       if (reachedTarget()) break;
 
       cycle++;
       logger.info(`Cycle ${cycle} complete. Added: ${addedThisCycle}. Waiting before next cycle...`);
+      if (await stopIfRequested()) return stats;
       await randomDelay(10 * 60 * 1000, 15 * 60 * 1000);
     }
 
@@ -511,4 +534,4 @@ const updateParserLog = async (id, status, message, stats) => {
     [status, message, stats.added, stats.updated, stats.skipped, id]);
 };
 
-module.exports = { runParser, parseProduct };
+module.exports = { runParser, parseProduct, requestParserStop };

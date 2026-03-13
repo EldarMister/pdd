@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { query } = require('../config/database');
 const { authenticate } = require('../middleware/auth');
-const { runParser, parseProduct } = require('../services/parserService');
+const { runParser, parseProduct, requestParserStop } = require('../services/parserService');
 const { updateCurrencyRate, recalculateAllPrices } = require('../services/currencyService');
 const { sendParserNotification } = require('../services/telegramService');
 const logger = require('../config/logger');
@@ -237,6 +237,16 @@ router.patch('/settings', async (req, res) => {
 // ─── PARSER ────────────────────────────────────────────────────
 
 let parserRunning = false;
+
+router.post('/parser/stop', async (req, res) => {
+  try {
+    if (!parserRunning) return res.json({ success: true, message: 'Parser is not running' });
+    requestParserStop();
+    res.json({ success: true, message: 'Stop requested' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 router.post('/parser/run', async (req, res) => {
   if (parserRunning) {
